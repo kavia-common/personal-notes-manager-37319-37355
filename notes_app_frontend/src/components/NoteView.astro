@@ -26,7 +26,7 @@ import type { Note } from '../lib/types';
 </section>
 
 <script type="module">
-  import { APIClient } from '../lib/api.ts';
+  import { NotesStore } from '../lib/store.ts';
 
   const url = new URL(window.location.href);
   const id = url.pathname.split('/').filter(Boolean).pop();
@@ -51,7 +51,7 @@ import type { Note } from '../lib/types';
     elError.style.display = 'none';
     elContent.style.display = 'none';
     try {
-      const note = await APIClient.getNote(id);
+      const note = await NotesStore.loadNote(id);
       render(note);
       elLoading.style.display = 'none';
       elContent.style.display = 'block';
@@ -86,7 +86,7 @@ import type { Note } from '../lib/types';
     // optimistic
     setFav(!current);
     try {
-      await APIClient.patchNote(id, { favorite: !current });
+      await NotesStore.toggleFavorite(id);
       toast('success', `Note ${!current ? 'favorited' : 'unfavorited'}.`);
     } catch (e) {
       setFav(current);
@@ -98,7 +98,7 @@ import type { Note } from '../lib/types';
     const confirmDelete = window.confirm('Delete this note? This cannot be undone.');
     if (!confirmDelete) return;
     try {
-      await APIClient.deleteNote(id);
+      await NotesStore.remove(id);
       toast('success', 'Note deleted.');
       window.location.href = '/notes';
     } catch (e) {

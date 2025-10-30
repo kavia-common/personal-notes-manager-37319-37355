@@ -9,7 +9,7 @@
  *  - tag?: string
  */
 import type { Note, APIError, Paginated } from '../lib/types';
-import { APIClient } from '../lib/api';
+import { NotesStore } from '../lib/store';
 
 const { view = 'list', filter = 'all', tag } = Astro.props as {
   view?: 'list' | 'grid',
@@ -47,6 +47,13 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     flex-direction: column;
     gap: 8px;
   }
+  .fade-in {
+    animation: fadeIn .15s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .note-title {
     margin: 0;
     display: flex;
@@ -67,10 +74,9 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
 </style>
 
 <script type="module">
-  import { APIClient } from '../lib/api.ts';
+  import { NotesStore } from '../lib/store.ts';
 
   const params = new URLSearchParams(window.location.search);
-  const initialView = params.get('view') || (Astro.props?.view ?? 'list');
   const initialFilter = params.get('filter') || (Astro.props?.filter ?? 'all');
   const tag = params.get('tag') || (Astro.props?.tag ?? undefined);
 
@@ -85,7 +91,6 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
   const pageSize = 12;
   let search = params.get('q') || '';
 
-  // UI setup
   if (elSearch) elSearch.value = search;
 
   function setState(msg) {
@@ -101,14 +106,14 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
   function noteCardHTML(n) {
     const favClass = n.favorite ? 'favorite' : '';
     return `
-      <article class="card note-card" data-id="${n.id}">
+      <article class="card note-card fade-in" data-id="${n.id}">
         <h3 class="note-title">
           <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${n.title || '(Untitled)'}</span>
           <button class="btn ${favClass} btn-fav" title="${n.favorite ? 'Unfavorite' : 'Favorite'}" aria-pressed="${n.favorite ? 'true' : 'false'}">
             ${n.favorite ? '★' : '☆'}
           </button>
         </h3>
-        <p class="text-muted" style="margin:0 0 6px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${(n.content || '').replace(/</g,'&lt;').slice(0,300)}</p>
+        <p class="text-muted" style="margin:0 0 8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${(n.content || '').replace(/</g,'&lt;').slice(0,300)}</p>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span class="text-muted" style="font-size:12px;">Updated ${new Date(n.updatedAt).toLocaleString()}</span>
           <div class="note-actions">
@@ -121,24 +126,6 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     `;
   }
 
-  async function fetchNotes() {
-    setState('Loading notes…');
-    try {
-      const resp = await APIClient.listNotes({
-        page, pageSize,
-        search: search || undefined,
-        favorite: initialFilter === 'favorites' ? true : undefined,
-        tag: tag || undefined
-      });
-      renderList(resp);
-      setState('');
-    } catch (e) {
-      console.error(e);
-      setState('Failed to load notes.');
-      toast('error', e?.message || 'Failed to load notes');
-    }
-  }
-
   function renderList(paginated) {
     if (!elList) return;
     if (!paginated.items?.length) {
@@ -146,13 +133,12 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     } else {
       elList.innerHTML = paginated.items.map(noteCardHTML).join('');
     }
-    // pagination
     const totalPages = Math.max(1, Math.ceil((paginated.total || 0) / (paginated.pageSize || pageSize)));
     elPrev.disabled = page <= 1;
     elNext.disabled = page >= totalPages;
     elPageInfo.textContent = `Page ${page} of ${totalPages} • ${paginated.total} total`;
 
-    // attach handlers
+    // Handlers
     elList.querySelectorAll('.btn-fav').forEach(btn => {
       btn.addEventListener('click', async (ev) => {
         const article = ev.currentTarget.closest('article');
@@ -160,15 +146,15 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
         const id = article.getAttribute('data-id');
         const starBtn = ev.currentTarget;
         const currentFav = starBtn.getAttribute('aria-pressed') === 'true';
-        // optimistic toggle
+        // optimistic UI immediately; store handles rollback if needed
         starBtn.setAttribute('aria-pressed', (!currentFav).toString());
         starBtn.textContent = currentFav ? '☆' : '★';
         starBtn.classList.toggle('favorite', !currentFav);
         try {
-          await APIClient.patchNote(id, { favorite: !currentFav });
+          await NotesStore.toggleFavorite(id);
           toast('success', `Note ${!currentFav ? 'favorited' : 'unfavorited'}.`);
         } catch (e) {
-          // rollback
+          // rollback UI
           starBtn.setAttribute('aria-pressed', currentFav.toString());
           starBtn.textContent = currentFav ? '★' : '☆';
           starBtn.classList.toggle('favorite', currentFav);
@@ -181,17 +167,40 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
       btn.addEventListener('click', async (ev) => {
         const id = ev.currentTarget.getAttribute('data-id');
         if (!id) return;
+
+        const ask = () => new Promise<boolean>((resolve) => {
+          // prefer custom dialog if present
+          const useDialog = typeof window !== 'undefined';
+          if (useDialog) {
+            window.dispatchEvent(new CustomEvent('confirm-dialog', {
+              detail: {
+                title: 'Delete note?',
+                message: 'This action cannot be undone.',
+                confirmLabel: 'Delete',
+                cancelLabel: 'Cancel',
+                onConfirm: () => resolve(true),
+              }
+            }));
+            // Fallback: if dialog not mounted, fallback to confirm
+            setTimeout(() => resolve(window.confirm('Delete this note? This cannot be undone.')), 50);
+          } else {
+            resolve(true);
+          }
+        });
+
+        const confirmed = await ask();
+        if (!confirmed) return;
+
         const node = elList.querySelector(`article[data-id="${CSS.escape(id)}"]`);
         const previousHTML = node?.outerHTML;
-        // optimistic remove
         node?.remove();
+
         try {
-          await APIClient.deleteNote(id);
+          await NotesStore.remove(id);
           toast('success', 'Note deleted.');
-          // re-fetch to maintain pagination integrity
-          fetchNotes();
+          // refresh list to maintain pagination integrity
+          load();
         } catch (e) {
-          // rollback UI
           if (previousHTML && elList) {
             elList.insertAdjacentHTML('afterbegin', previousHTML);
           }
@@ -201,16 +210,33 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     });
   }
 
-  // events
+  async function load() {
+    setState('Loading notes…');
+    try {
+      const resp = await NotesStore.loadList({
+        page, pageSize,
+        search: search || undefined,
+        favorite: initialFilter === 'favorites' ? true : undefined,
+        tag: tag || undefined
+      });
+      renderList(resp);
+      setState('');
+    } catch (e) {
+      setState('Failed to load notes.');
+      toast('error', e?.message || 'Failed to load notes');
+    }
+  }
+
+  // pagination
   elPrev?.addEventListener('click', () => {
     if (page > 1) {
       page -= 1;
-      fetchNotes();
+      load();
     }
   });
   elNext?.addEventListener('click', () => {
     page += 1;
-    fetchNotes();
+    load();
   });
   elSearch?.addEventListener('change', () => {
     page = 1;
@@ -218,8 +244,20 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     const url = new URL(window.location.href);
     if (search) url.searchParams.set('q', search); else url.searchParams.delete('q');
     history.replaceState(null, '', url.toString());
-    fetchNotes();
+    // invalidate cache so new search re-fetches
+    NotesStore.invalidateList(true);
+    load();
   });
 
-  fetchNotes();
+  // subscribe for external invalidations
+  const unsub = NotesStore.subscribe(() => {
+    const s = NotesStore.getState();
+    if (s.list && s.listParams) {
+      renderList(s.list);
+    }
+  });
+
+  window.addEventListener('beforeunload', unsub);
+
+  load();
 </script>

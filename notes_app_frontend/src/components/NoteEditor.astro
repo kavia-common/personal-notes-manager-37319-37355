@@ -26,7 +26,7 @@
 </section>
 
 <script type="module">
-  import { APIClient } from '../lib/api.ts';
+  import { NotesStore } from '../lib/store.ts';
 
   const url = new URL(window.location.href);
   const id = url.pathname.split('/').filter(Boolean).pop();
@@ -75,12 +75,16 @@
     elSave.textContent = 'Saving…';
     try {
       if (isEdit) {
-        const updated = await APIClient.patchNote(id, payload);
+        const updated = await NotesStore.update(id, payload);
         toast('success', 'Note updated.');
+        // ensure list cache reflects new filters/search
+        NotesStore.invalidateList(true);
         window.location.href = `/notes/${encodeURIComponent(updated.id)}`;
       } else {
-        const created = await APIClient.createNote(payload);
+        const created = await NotesStore.create(payload);
         toast('success', 'Note created.');
+        // invalidate to reload list with new item
+        NotesStore.invalidateList(true);
         window.location.href = `/notes/${encodeURIComponent(created.id)}`;
       }
     } catch (e) {

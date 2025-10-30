@@ -1,6 +1,7 @@
 ---
 import ThemeToggle from '../components/ThemeToggle.astro';
 import Sidebar from '../components/Sidebar.astro';
+import ConfirmDialog from '../components/ConfirmDialog.astro';
 ---
 
 <!doctype html>
@@ -23,5 +24,6 @@ import Sidebar from '../components/Sidebar.astro';
         <slot />
       </main>
     </div>
+    <ConfirmDialog />
   </body>
 </html>

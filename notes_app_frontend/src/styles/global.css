@@ -198,6 +198,12 @@ body.dark-theme .sidebar {
 .main {
   padding: var(--space-6);
 }
+.main > section:not(:first-child) {
+  margin-top: var(--space-6);
+}
+.card + .card {
+  margin-top: var(--space-4);
+}
 
 .nav-group {
   margin-top: var(--space-4);

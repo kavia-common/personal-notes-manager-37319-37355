@@ -1,0 +1,26 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * EmptyState.astro
+ * Displays a friendly empty state message with optional action link.
+ * Props: title: string; description?: string; actionHref?: string; actionLabel?: string;
+ */
+const { title, description, actionHref, actionLabel } = Astro.props as {
+  title: string;
+  description?: string;
+  actionHref?: string;
+  actionLabel?: string;
+};
+---
+<div class="card empty" role="status" aria-live="polite">
+  <h3 style="margin: 0 0 6px;">{title}</h3>
+  { description && <p class="text-muted" style="margin: 0 0 10px;">{description}</p> }
+  { actionHref && actionLabel && <a class="btn btn-primary" href={actionHref}>{actionLabel}</a> }
+</div>
+
+<style>
+  .empty {
+    padding: 20px;
+    text-align: center;
+  }
+</style>

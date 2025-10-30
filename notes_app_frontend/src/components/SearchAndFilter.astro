@@ -1,0 +1,38 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * SearchAndFilter.astro
+ * Reusable search input with debounced "search-change" event.
+ * Props: placeholder?: string, initial?: string
+ */
+const { placeholder = 'Search notes...', initial = '' } = Astro.props as { placeholder?: string; initial?: string };
+---
+<div class="search-row">
+  <input id="sf-input" class="input" type="search" placeholder={placeholder} value={initial} />
+</div>
+
+<style>
+  .search-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+
+<script>
+  const el = document.getElementById('sf-input');
+
+  function emit(value) {
+    window.dispatchEvent(new CustomEvent('search-change', { detail: { value }}));
+  }
+
+  // debounce
+  let t;
+  el?.addEventListener('input', () => {
+    const v = el.value.trim();
+    clearTimeout(t);
+    t = setTimeout(() => emit(v), 250);
+  });
+</script>
