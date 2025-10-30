@@ -1,0 +1,55 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+/**
+ * PUBLIC_INTERFACE
+ * Notes index page.
+ * Displays a list placeholder and basic controls. Future steps will wire real data and CRUD.
+ */
+const { searchParams } = Astro.url;
+const filter = searchParams.get('filter') ?? 'all';
+const view = searchParams.get('view') ?? 'list';
+---
+
+<Layout>
+  <section>
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <div>
+        <h1 style="margin:0;">Notes</h1>
+        <p class="text-muted" style="margin:4px 0 0;">Viewing: {filter === 'favorites' ? 'Favorites' : view === 'tags' ? 'Tags' : 'All Notes'}</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=list">List</a>
+        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=grid">Grid</a>
+        <a class="btn btn-primary" href="/notes/new">New Note</a>
+      </div>
+    </header>
+
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+        <input class="input" style="max-width:380px;" type="search" placeholder="Search notes..." />
+        <div class="text-muted" style="font-size:14px;">Filter: {filter}</div>
+      </div>
+      <div
+        style="
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 12px;
+        "
+      >
+        {
+          Array.from({ length: 6 }).map((_, i) => (
+            <article class="card" style="padding: 12px;">
+              <h3 style="margin:0 0 6px;">Sample Note {i + 1}</h3>
+              <p class="text-muted" style="margin:0 0 10px;">This is a placeholder note summary to illustrate layout.</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="text-muted" style="font-size:12px;">Updated just now</span>
+                <a class="btn" style="border-color: var(--color-border);" href={`/notes/${i + 1}`}>Open</a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Layout>

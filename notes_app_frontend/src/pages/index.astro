@@ -1,11 +1,14 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
 <Layout>
-	<Welcome />
+  <section class="card" style="padding: 20px;">
+    <h1 style="margin:0 0 8px;">Welcome to Personal Notes</h1>
+    <p class="text-muted" style="margin:0 0 16px;">Use the navigation to view all notes, favorites, or tags.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a class="btn btn-primary" href="/notes">Open Notes</a>
+      <a class="btn btn-secondary" href="/notes/new">Create Note</a>
+    </div>
+  </section>
 </Layout>

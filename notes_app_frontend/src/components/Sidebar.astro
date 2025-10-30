@@ -1,0 +1,63 @@
+---
+/**
+ * Sidebar.astro
+ * PUBLIC_INTERFACE
+ * Renders the app navigation and quick actions.
+ */
+---
+
+<div class="brand" style="display:flex;align-items:center;gap:10px;">
+  <div style="width:34px;height:34px;border-radius:10px;background: linear-gradient(135deg, var(--color-primary), color-mix(in oklab, var(--color-primary), #ffffff 20%)); box-shadow: 0 8px 18px color-mix(in oklab, var(--color-primary), transparent 80%);"></div>
+  <div>
+    <div style="font-weight:800;letter-spacing:.2px;">Notes</div>
+    <div class="text-muted" style="font-size:12px;">Ocean Professional</div>
+  </div>
+</div>
+
+<div class="search">
+  <input class="input" type="search" placeholder="Search notes..." aria-label="Search notes" />
+</div>
+
+<hr class="divider" />
+
+<nav class="nav-group" aria-label="Primary">
+  <a class="nav-item" href="/notes" aria-current={Astro.url.pathname.startsWith('/notes') ? 'page' : undefined}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7.879a2.5 2.5 0 0 1 1.768.732l2.121 2.121A2.5 2.5 0 0 1 19 8.621V17.5A2.5 2.5 0 0 1 16.5 20h-10A2.5 2.5 0 0 1 4 17.5v-11Z" stroke="currentColor" stroke-width="1.5"/></svg>
+    All Notes
+  </a>
+  <a class="nav-item" href="/notes?filter=favorites">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 18.26 5.472 22l1.248-7.272L1 9.26l7.236-1.052L12 1.5l3.764 6.708L23 9.26l-5.72 5.468L18.528 22 12 18.26Z" stroke="currentColor" stroke-width="1.5" /></svg>
+    Favorites
+  </a>
+  <a class="nav-item" href="/notes?view=tags">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.59 13.41 12 22l-8.59-8.59A2 2 0 0 1 3 12V4a2 2 0 0 1 2-2h8a2 2 0 0 1 1.41.59L22 12a2 2 0 0 1 0 1.41Z" stroke="currentColor" stroke-width="1.5"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/></svg>
+    Tags
+  </a>
+</nav>
+
+<hr class="divider" />
+
+<div class="actions">
+  <a class="btn btn-primary" href="/notes/new">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    New Note
+  </a>
+</div>
+
+<style>
+  .brand { margin-top: 4px; }
+  .actions { margin-top: var(--space-4); }
+  .nav-item[aria-current="page"] {
+    background: color-mix(in oklab, var(--color-primary), transparent 86%);
+    border-color: color-mix(in oklab, var(--color-primary), transparent 60%);
+  }
+
+  @media (max-width: 900px) {
+    .actions {
+      position: sticky;
+      bottom: 0;
+      padding-top: var(--space-4);
+      background: linear-gradient(to top, color-mix(in oklab, var(--color-bg), transparent 0%), transparent 60%);
+    }
+  }
+</style>
