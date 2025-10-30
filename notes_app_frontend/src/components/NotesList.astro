@@ -1,0 +1,225 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * NotesList.astro
+ * Renders a list/grid of notes with search, filtering, pagination.
+ * Props:
+ *  - view: 'list' | 'grid'
+ *  - filter: 'all' | 'favorites'
+ *  - tag?: string
+ */
+import type { Note, APIError, Paginated } from '../lib/types';
+import { APIClient } from '../lib/api';
+
+const { view = 'list', filter = 'all', tag } = Astro.props as {
+  view?: 'list' | 'grid',
+  filter?: 'all' | 'favorites',
+  tag?: string
+};
+---
+
+<section class="card" style="padding: 16px;">
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+    <input id="search-input" class="input" style="max-width:420px;" type="search" placeholder="Search notes..." />
+    <div class="text-muted" style="font-size:14px;">Filter: {filter}</div>
+  </div>
+
+  <div id="notes-state" class="text-muted" style="display:none;margin: 12px 0;">Loading notes…</div>
+
+  <div id="notes-list"
+    style={`display: grid; grid-template-columns: ${view === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr'}; gap: 12px;`}
+    aria-live="polite"
+  >
+    <!-- Client script populates list -->
+  </div>
+
+  <div id="pagination" style="display:flex; justify-content: space-between; align-items:center; margin-top: 12px;">
+    <button class="btn" id="prev-page" disabled>Previous</button>
+    <span class="text-muted" id="page-info" style="font-size: 14px;"></span>
+    <button class="btn" id="next-page" disabled>Next</button>
+  </div>
+</section>
+
+<style>
+  .note-card {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .note-title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+  .note-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .favorite {
+    border-color: color-mix(in oklab, var(--color-secondary), transparent 60%);
+    color: var(--color-secondary-600);
+  }
+</style>
+
+<script type="module">
+  import { APIClient } from '../lib/api.ts';
+
+  const params = new URLSearchParams(window.location.search);
+  const initialView = params.get('view') || (Astro.props?.view ?? 'list');
+  const initialFilter = params.get('filter') || (Astro.props?.filter ?? 'all');
+  const tag = params.get('tag') || (Astro.props?.tag ?? undefined);
+
+  const elList = document.getElementById('notes-list');
+  const elState = document.getElementById('notes-state');
+  const elSearch = document.getElementById('search-input');
+  const elPrev = document.getElementById('prev-page');
+  const elNext = document.getElementById('next-page');
+  const elPageInfo = document.getElementById('page-info');
+
+  let page = Number(params.get('page') || 1);
+  const pageSize = 12;
+  let search = params.get('q') || '';
+
+  // UI setup
+  if (elSearch) elSearch.value = search;
+
+  function setState(msg) {
+    if (!elState) return;
+    elState.style.display = msg ? 'block' : 'none';
+    elState.textContent = msg || '';
+  }
+
+  function toast(type, message) {
+    window.dispatchEvent(new CustomEvent('toast', { detail: { type, message }}));
+  }
+
+  function noteCardHTML(n) {
+    const favClass = n.favorite ? 'favorite' : '';
+    return `
+      <article class="card note-card" data-id="${n.id}">
+        <h3 class="note-title">
+          <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${n.title || '(Untitled)'}</span>
+          <button class="btn ${favClass} btn-fav" title="${n.favorite ? 'Unfavorite' : 'Favorite'}" aria-pressed="${n.favorite ? 'true' : 'false'}">
+            ${n.favorite ? '★' : '☆'}
+          </button>
+        </h3>
+        <p class="text-muted" style="margin:0 0 6px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;">${(n.content || '').replace(/</g,'&lt;').slice(0,300)}</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="text-muted" style="font-size:12px;">Updated ${new Date(n.updatedAt).toLocaleString()}</span>
+          <div class="note-actions">
+            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}">Open</a>
+            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}?edit=1">Edit</a>
+            <button class="btn btn-delete" data-id="${n.id}">Delete</button>
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  async function fetchNotes() {
+    setState('Loading notes…');
+    try {
+      const resp = await APIClient.listNotes({
+        page, pageSize,
+        search: search || undefined,
+        favorite: initialFilter === 'favorites' ? true : undefined,
+        tag: tag || undefined
+      });
+      renderList(resp);
+      setState('');
+    } catch (e) {
+      console.error(e);
+      setState('Failed to load notes.');
+      toast('error', e?.message || 'Failed to load notes');
+    }
+  }
+
+  function renderList(paginated) {
+    if (!elList) return;
+    if (!paginated.items?.length) {
+      elList.innerHTML = `<div class="text-muted">No notes found.</div>`;
+    } else {
+      elList.innerHTML = paginated.items.map(noteCardHTML).join('');
+    }
+    // pagination
+    const totalPages = Math.max(1, Math.ceil((paginated.total || 0) / (paginated.pageSize || pageSize)));
+    elPrev.disabled = page <= 1;
+    elNext.disabled = page >= totalPages;
+    elPageInfo.textContent = `Page ${page} of ${totalPages} • ${paginated.total} total`;
+
+    // attach handlers
+    elList.querySelectorAll('.btn-fav').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        const article = ev.currentTarget.closest('article');
+        if (!article) return;
+        const id = article.getAttribute('data-id');
+        const starBtn = ev.currentTarget;
+        const currentFav = starBtn.getAttribute('aria-pressed') === 'true';
+        // optimistic toggle
+        starBtn.setAttribute('aria-pressed', (!currentFav).toString());
+        starBtn.textContent = currentFav ? '☆' : '★';
+        starBtn.classList.toggle('favorite', !currentFav);
+        try {
+          await APIClient.patchNote(id, { favorite: !currentFav });
+          toast('success', `Note ${!currentFav ? 'favorited' : 'unfavorited'}.`);
+        } catch (e) {
+          // rollback
+          starBtn.setAttribute('aria-pressed', currentFav.toString());
+          starBtn.textContent = currentFav ? '★' : '☆';
+          starBtn.classList.toggle('favorite', currentFav);
+          toast('error', e?.message || 'Failed to update favorite');
+        }
+      });
+    });
+
+    elList.querySelectorAll('.btn-delete').forEach(btn => {
+      btn.addEventListener('click', async (ev) => {
+        const id = ev.currentTarget.getAttribute('data-id');
+        if (!id) return;
+        const node = elList.querySelector(`article[data-id="${CSS.escape(id)}"]`);
+        const previousHTML = node?.outerHTML;
+        // optimistic remove
+        node?.remove();
+        try {
+          await APIClient.deleteNote(id);
+          toast('success', 'Note deleted.');
+          // re-fetch to maintain pagination integrity
+          fetchNotes();
+        } catch (e) {
+          // rollback UI
+          if (previousHTML && elList) {
+            elList.insertAdjacentHTML('afterbegin', previousHTML);
+          }
+          toast('error', e?.message || 'Failed to delete note');
+        }
+      });
+    });
+  }
+
+  // events
+  elPrev?.addEventListener('click', () => {
+    if (page > 1) {
+      page -= 1;
+      fetchNotes();
+    }
+  });
+  elNext?.addEventListener('click', () => {
+    page += 1;
+    fetchNotes();
+  });
+  elSearch?.addEventListener('change', () => {
+    page = 1;
+    search = elSearch.value.trim();
+    const url = new URL(window.location.href);
+    if (search) url.searchParams.set('q', search); else url.searchParams.delete('q');
+    history.replaceState(null, '', url.toString());
+    fetchNotes();
+  });
+
+  fetchNotes();
+</script>

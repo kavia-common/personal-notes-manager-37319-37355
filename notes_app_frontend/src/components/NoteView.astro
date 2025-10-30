@@ -1,0 +1,117 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * NoteView.astro
+ * Displays a single note by id with favorite toggle and navigation actions.
+ * Props: id: string, enableEditLink?: boolean
+ */
+import type { Note } from '../lib/types';
+---
+
+<section id="note-view" class="card" style="padding: 16px;">
+  <div id="loading" class="text-muted">Loading note…</div>
+  <div id="error" class="text-muted" style="display:none;"></div>
+  <div id="content" style="display:none;">
+    <header style="display:flex; align-items:center; gap: 10px; justify-content: space-between; flex-wrap: wrap;">
+      <h1 id="title" style="margin:0; flex:1;">Note</h1>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="fav" class="btn" aria-pressed="false" title="Favorite">☆</button>
+        <a id="edit-link" class="btn" style="border-color: var(--color-border);" href="#">Edit</a>
+        <button id="delete" class="btn">Delete</button>
+      </div>
+    </header>
+    <p id="meta" class="text-muted" style="margin:6px 0 16px; font-size: 14px;"></p>
+    <article id="body" style="white-space: pre-wrap;"></article>
+  </div>
+</section>
+
+<script type="module">
+  import { APIClient } from '../lib/api.ts';
+
+  const url = new URL(window.location.href);
+  const id = url.pathname.split('/').filter(Boolean).pop();
+  const isEditQuery = url.searchParams.get('edit') === '1';
+
+  const elLoading = document.getElementById('loading');
+  const elError = document.getElementById('error');
+  const elContent = document.getElementById('content');
+  const elTitle = document.getElementById('title');
+  const elMeta = document.getElementById('meta');
+  const elBody = document.getElementById('body');
+  const elFav = document.getElementById('fav');
+  const elEdit = document.getElementById('edit-link');
+  const elDelete = document.getElementById('delete');
+
+  function toast(type, message) {
+    window.dispatchEvent(new CustomEvent('toast', { detail: { type, message }}));
+  }
+
+  async function load() {
+    elLoading.style.display = 'block';
+    elError.style.display = 'none';
+    elContent.style.display = 'none';
+    try {
+      const note = await APIClient.getNote(id);
+      render(note);
+      elLoading.style.display = 'none';
+      elContent.style.display = 'block';
+    } catch (e) {
+      elLoading.style.display = 'none';
+      elError.style.display = 'block';
+      elError.textContent = e?.message || 'Failed to load the note.';
+      toast('error', e?.message || 'Failed to load the note');
+    }
+  }
+
+  function render(n) {
+    elTitle.textContent = n.title || '(Untitled)';
+    elMeta.textContent = `Updated ${new Date(n.updatedAt).toLocaleString()}`;
+    elBody.textContent = n.content || '';
+    setFav(n.favorite);
+    elEdit.setAttribute('href', `/notes/${encodeURIComponent(n.id)}?edit=1`);
+  }
+
+  function setFav(isFav) {
+    elFav.setAttribute('aria-pressed', isFav ? 'true' : 'false');
+    elFav.textContent = isFav ? '★' : '☆';
+    if (isFav) {
+      elFav.classList.add('favorite');
+    } else {
+      elFav.classList.remove('favorite');
+    }
+  }
+
+  elFav.addEventListener('click', async () => {
+    const current = elFav.getAttribute('aria-pressed') === 'true';
+    // optimistic
+    setFav(!current);
+    try {
+      await APIClient.patchNote(id, { favorite: !current });
+      toast('success', `Note ${!current ? 'favorited' : 'unfavorited'}.`);
+    } catch (e) {
+      setFav(current);
+      toast('error', e?.message || 'Failed to update favorite');
+    }
+  });
+
+  elDelete.addEventListener('click', async () => {
+    const confirmDelete = window.confirm('Delete this note? This cannot be undone.');
+    if (!confirmDelete) return;
+    try {
+      await APIClient.deleteNote(id);
+      toast('success', 'Note deleted.');
+      window.location.href = '/notes';
+    } catch (e) {
+      toast('error', e?.message || 'Failed to delete note');
+    }
+  });
+
+  load();
+</script>
+
+<style>
+  #fav.favorite {
+    border-color: color-mix(in oklab, var(--color-secondary), transparent 60%);
+    color: var(--color-secondary-600);
+  }
+</style>

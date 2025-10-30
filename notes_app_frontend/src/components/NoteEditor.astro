@@ -1,0 +1,95 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * NoteEditor.astro
+ * Editor for creating or editing a note.
+ * Props:
+ *  - id?: string (if provided, loads existing note and updates on save)
+ */
+---
+
+<section id="editor" class="card" style="padding: 16px;">
+  <div id="loader" class="text-muted" style="display:none;">Loading…</div>
+  <div id="error" class="text-muted" style="display:none;"></div>
+  <form id="note-form" style="display:flex; flex-direction: column; gap: 12px;">
+    <input id="title" class="input" placeholder="Note title" required />
+    <textarea id="content" class="input" placeholder="Write your note..." rows="10" style="resize: vertical;"></textarea>
+    <label style="display:flex; align-items:center; gap:8px; font-size: 14px;">
+      <input id="favorite" type="checkbox" />
+      Mark as favorite
+    </label>
+    <div style="display:flex; gap: 10px; flex-wrap:wrap; justify-content: flex-end;">
+      <a class="btn" id="cancel" style="border-color: var(--color-border);" href="/notes">Cancel</a>
+      <button type="submit" class="btn btn-primary" id="save">Save</button>
+    </div>
+  </form>
+</section>
+
+<script type="module">
+  import { APIClient } from '../lib/api.ts';
+
+  const url = new URL(window.location.href);
+  const id = url.pathname.split('/').filter(Boolean).pop();
+  const isEdit = /\/notes\/[^/]+$/.test(url.pathname) && url.searchParams.get('edit') === '1';
+  const isNew = url.pathname.endsWith('/notes/new');
+
+  const elLoader = document.getElementById('loader');
+  const elError = document.getElementById('error');
+  const elForm = document.getElementById('note-form');
+  const elTitle = document.getElementById('title');
+  const elContent = document.getElementById('content');
+  const elFav = document.getElementById('favorite');
+  const elSave = document.getElementById('save');
+
+  function toast(type, message) {
+    window.dispatchEvent(new CustomEvent('toast', { detail: { type, message }}));
+  }
+
+  async function loadIfEdit() {
+    if (!isEdit) return;
+    elLoader.style.display = 'block';
+    elForm.style.display = 'none';
+    try {
+      const note = await APIClient.getNote(id);
+      elTitle.value = note.title || '';
+      elContent.value = note.content || '';
+      elFav.checked = !!note.favorite;
+      elLoader.style.display = 'none';
+      elForm.style.display = 'flex';
+    } catch (e) {
+      elLoader.style.display = 'none';
+      elError.style.display = 'block';
+      elError.textContent = e?.message || 'Failed to load note.';
+      toast('error', e?.message || 'Failed to load note');
+    }
+  }
+
+  elForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const payload = {
+      title: elTitle.value.trim() || 'Untitled',
+      content: elContent.value,
+      favorite: !!elFav.checked,
+    };
+    elSave.disabled = true;
+    elSave.textContent = 'Saving…';
+    try {
+      if (isEdit) {
+        const updated = await APIClient.patchNote(id, payload);
+        toast('success', 'Note updated.');
+        window.location.href = `/notes/${encodeURIComponent(updated.id)}`;
+      } else {
+        const created = await APIClient.createNote(payload);
+        toast('success', 'Note created.');
+        window.location.href = `/notes/${encodeURIComponent(created.id)}`;
+      }
+    } catch (e) {
+      toast('error', e?.message || 'Failed to save note');
+    } finally {
+      elSave.disabled = false;
+      elSave.textContent = 'Save';
+    }
+  });
+
+  loadIfEdit();
+</script>

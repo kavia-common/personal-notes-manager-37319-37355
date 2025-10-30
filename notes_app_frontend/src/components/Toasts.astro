@@ -1,0 +1,96 @@
+---
+/**
+ * PUBLIC_INTERFACE
+ * Toasts.astro
+ * Lightweight toast notification system. Use by dispatching "toast" events:
+ *   window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success'|'error'|'info', message: '...' } }))
+ */
+---
+
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<style>
+  #toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 2000;
+  }
+  .toast {
+    min-width: 260px;
+    max-width: 420px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 8px 16px var(--color-shadow);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn .2s ease;
+  }
+  .toast.success { border-color: color-mix(in oklab, var(--color-secondary), transparent 50%); }
+  .toast.error { border-color: color-mix(in oklab, #EF4444, transparent 50%); }
+  .toast.info { border-color: color-mix(in oklab, var(--color-primary), transparent 50%); }
+
+  .toast .label { font-weight: 700; font-size: 13px; }
+  .toast .message { font-size: 13px; color: var(--color-text); }
+  .toast .icon { width: 16px; height: 16px; }
+  .toast .close {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateY(-8px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  body.dark-theme .toast {
+    background: var(--color-surface-dark);
+    border-color: var(--color-border-dark);
+    color: var(--color-text-dark);
+    box-shadow: 0 8px 16px var(--color-shadow-dark);
+  }
+</style>
+
+<script>
+  // PUBLIC_INTERFACE
+  /**
+   * Show a toast programmatically.
+   */
+  function showToast(type, message, timeout = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.setAttribute('role', 'status');
+    el.innerHTML = `
+      <span class="icon">${
+        type === 'success' ? '✅' : type === 'error' ? '⛔' : 'ℹ️'
+      }</span>
+      <span class="label">${type === 'success' ? 'Success' : type === 'error' ? 'Error' : 'Info'}</span>
+      <span class="message">${message}</span>
+      <button class="close" aria-label="Dismiss">&times;</button>
+    `;
+    const remove = () => el.remove();
+    el.querySelector('.close')?.addEventListener('click', remove);
+    container.appendChild(el);
+    if (timeout > 0) setTimeout(remove, timeout);
+  }
+
+  // Listen for global toast events
+  function onToastEvent(e) {
+    const { type = 'info', message = '' , timeout } = e.detail || {};
+    showToast(type, message, timeout);
+  }
+
+  window.addEventListener('toast', onToastEvent);
+</script>

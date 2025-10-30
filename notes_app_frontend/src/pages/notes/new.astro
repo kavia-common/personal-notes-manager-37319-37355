@@ -1,0 +1,25 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import NoteEditor from '../../components/NoteEditor.astro';
+import Toasts from '../../components/Toasts.astro';
+
+/**
+ * PUBLIC_INTERFACE
+ * /notes/new route
+ * Renders NoteEditor in create mode.
+ */
+---
+
+<Layout>
+  <Toasts />
+  <section>
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+      <div>
+        <h1 style="margin:0;">New Note</h1>
+        <p class="text-muted" style="margin:4px 0 0;">Create a new note.</p>
+      </div>
+    </header>
+
+    <NoteEditor />
+  </section>
+</Layout>

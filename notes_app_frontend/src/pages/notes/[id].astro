@@ -1,0 +1,24 @@
+---
+/**
+ * We prerender a generic shell for dynamic note routes and let the client load content.
+ * This avoids needing an SSR adapter.
+ */
+export async function getStaticPaths() {
+  // Build-time: generate no specific paths; use fallback
+  return [{ params: { id: 'placeholder' } }];
+}
+export const prerender = true;
+
+import Layout from '../../layouts/Layout.astro';
+import NoteView from '../../components/NoteView.astro';
+import NoteEditor from '../../components/NoteEditor.astro';
+import Toasts from '../../components/Toasts.astro';
+
+const { searchParams } = Astro.url;
+const isEdit = searchParams.get('edit') === '1';
+---
+
+<Layout>
+  <Toasts />
+  { isEdit ? <NoteEditor /> : <NoteView /> }
+</Layout>

@@ -9,24 +9,38 @@ export default [
   // TypeScript support
   ...tseslint.configs.recommended,
 
+  // Ignore generated and build outputs
+  {
+    ignores: [
+      '.astro/**',
+      'dist/**',
+      'node_modules/**'
+    ]
+  },
+
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.json',
+        // Do not require project to avoid parsing generated d.ts in .astro
         ecmaVersion: 2022,
         sourceType: 'module',
       },
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
     },
     rules: {
-      // Example custom rules for TS
       '@typescript-eslint/no-unused-vars': ['warn'],
       '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-explicit-any': ['warn'],
+      '@typescript-eslint/ban-ts-comment': ['warn', { 'ts-expect-error': 'allow-with-description' }],
     },
   },
 
-  // JS files config (same as before)
+  // JS files config
   {
     files: ['**/*.js', '**/*.jsx'],
     languageOptions: {
