@@ -130,6 +130,24 @@ body.dark-theme .input {
   transition: background var(--transition-base), color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
   font-weight: 600;
 }
+.btn:focus-visible, a.btn:focus-visible, input:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--color-primary), transparent 30%);
+  outline-offset: 2px;
+  border-radius: calc(var(--radius-md) + 2px);
+}
+
+/* Utility for screen-reader only content */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 
 .btn-primary {
   background: linear-gradient(135deg, color-mix(in oklab, var(--color-primary), white 10%), var(--color-primary));

@@ -18,25 +18,39 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
 };
 ---
 
-<section class="card" style="padding: 16px;">
+<section class="card" style="padding: 16px;" aria-labelledby="notes-heading">
+  <h2 id="notes-heading" class="visually-hidden">Notes list</h2>
+
   <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-    <input id="search-input" class="input" style="max-width:420px;" type="search" placeholder="Search notes..." />
+    <label class="visually-hidden" for="search-input">Search notes</label>
+    <input id="search-input" class="input" style="max-width:420px;" type="search" placeholder="Search notes..." aria-label="Search notes" />
     <div class="text-muted" style="font-size:14px;">Filter: {filter}</div>
   </div>
 
-  <div id="notes-state" class="text-muted" style="display:none;margin: 12px 0;">Loading notes…</div>
+  <div id="notes-state" class="text-muted" role="status" aria-live="polite" style="display:none;margin: 12px 0;">Loading notes…</div>
+
+  <div id="skeleton-list" aria-hidden="true" style={`display:grid; grid-template-columns: ${view === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr'}; gap:12px;`}>
+    {Array.from({ length: 6 }).map(() => (
+      <div class="card note-card skeleton">
+        <div class="sk-title"></div>
+        <div class="sk-line"></div>
+        <div class="sk-line short"></div>
+      </div>
+    ))}
+  </div>
 
   <div id="notes-list"
-    style={`display: grid; grid-template-columns: ${view === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr'}; gap: 12px;`}
+    style={`display: none; grid-template-columns: ${view === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr'}; gap: 12px;`}
     aria-live="polite"
+    role="list"
   >
     <!-- Client script populates list -->
   </div>
 
   <div id="pagination" style="display:flex; justify-content: space-between; align-items:center; margin-top: 12px;">
-    <button class="btn" id="prev-page" disabled>Previous</button>
-    <span class="text-muted" id="page-info" style="font-size: 14px;"></span>
-    <button class="btn" id="next-page" disabled>Next</button>
+    <button class="btn" id="prev-page" disabled aria-label="Previous page">Previous</button>
+    <span class="text-muted" id="page-info" style="font-size: 14px;" role="status" aria-live="polite"></span>
+    <button class="btn" id="next-page" disabled aria-label="Next page">Next</button>
   </div>
 </section>
 
@@ -46,6 +60,34 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .note-card:focus-within {
+    outline: 2px solid color-mix(in oklab, var(--color-primary), transparent 40%);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+  .skeleton {
+    overflow: hidden;
+    position: relative;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, #ccc, transparent 60%), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.2s infinite;
+  }
+  .sk-title, .sk-line {
+    height: 12px;
+    background: color-mix(in oklab, #ccc, transparent 40%);
+    border-radius: 6px;
+    margin: 8px 0;
+  }
+  .sk-title { width: 60%; height: 16px; margin-top: 0; }
+  .sk-line.short { width: 40%; }
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
   }
   .fade-in {
     animation: fadeIn .15s ease;
@@ -86,6 +128,7 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
   const elPrev = document.getElementById('prev-page');
   const elNext = document.getElementById('next-page');
   const elPageInfo = document.getElementById('page-info');
+  const elSkeleton = document.getElementById('skeleton-list');
 
   let page = Number(params.get('page') || 1);
   const pageSize = 12;
@@ -106,10 +149,10 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
   function noteCardHTML(n) {
     const favClass = n.favorite ? 'favorite' : '';
     return `
-      <article class="card note-card fade-in" data-id="${n.id}">
-        <h3 class="note-title">
+      <article class="card note-card fade-in" data-id="${n.id}" role="listitem" aria-labelledby="title-${n.id}">
+        <h3 class="note-title" id="title-${n.id}">
           <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${n.title || '(Untitled)'}</span>
-          <button class="btn ${favClass} btn-fav" title="${n.favorite ? 'Unfavorite' : 'Favorite'}" aria-pressed="${n.favorite ? 'true' : 'false'}">
+          <button class="btn ${favClass} btn-fav" aria-label="${n.favorite ? 'Unfavorite note' : 'Favorite note'}" title="${n.favorite ? 'Unfavorite' : 'Favorite'}" aria-pressed="${n.favorite ? 'true' : 'false'}">
             ${n.favorite ? '★' : '☆'}
           </button>
         </h3>
@@ -117,9 +160,9 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span class="text-muted" style="font-size:12px;">Updated ${new Date(n.updatedAt).toLocaleString()}</span>
           <div class="note-actions">
-            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}">Open</a>
-            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}?edit=1">Edit</a>
-            <button class="btn btn-delete" data-id="${n.id}">Delete</button>
+            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}" aria-label="Open note ${n.title || n.id}">Open</a>
+            <a class="btn" style="border-color: var(--color-border);" href="/notes/${encodeURIComponent(n.id)}?edit=1" aria-label="Edit note ${n.title || n.id}">Edit</a>
+            <button class="btn btn-delete" data-id="${n.id}" aria-label="Delete note ${n.title || n.id}">Delete</button>
           </div>
         </div>
       </article>
@@ -133,10 +176,23 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
     } else {
       elList.innerHTML = paginated.items.map(noteCardHTML).join('');
     }
+
+    // Show list, hide skeleton
+    if (elSkeleton) elSkeleton.style.display = 'none';
+    elList.style.display = 'grid';
+
     const totalPages = Math.max(1, Math.ceil((paginated.total || 0) / (paginated.pageSize || pageSize)));
     elPrev.disabled = page <= 1;
     elNext.disabled = page >= totalPages;
     elPageInfo.textContent = `Page ${page} of ${totalPages} • ${paginated.total} total`;
+
+    // focus first "Open" button for keyboard users after render
+    const firstOpen = elList.querySelector('a[href*="/notes/"]');
+    if (firstOpen && document.activeElement === elSearch) {
+      // Keep focus on search if user is typing; otherwise focus first item
+    } else if (firstOpen) {
+      (firstOpen as HTMLElement).focus({ preventScroll: false });
+    }
 
     // Handlers
     elList.querySelectorAll('.btn-fav').forEach(btn => {
@@ -211,6 +267,11 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
   }
 
   async function load() {
+    // Abort any in-flight requests before starting a new one
+    NotesStore.cancelInFlight();
+
+    if (elSkeleton) elSkeleton.style.display = 'grid';
+    if (elList) elList.style.display = 'none';
     setState('Loading notes…');
     try {
       const resp = await NotesStore.loadList({
@@ -222,7 +283,13 @@ const { view = 'list', filter = 'all', tag } = Astro.props as {
       renderList(resp);
       setState('');
     } catch (e) {
-      setState('Failed to load notes.');
+      // Hide skeleton on error
+      if (elSkeleton) elSkeleton.style.display = 'none';
+      if (elList) {
+        elList.style.display = 'grid';
+        elList.innerHTML = `<div role="alert" class="text-muted">We couldn’t load your notes. Please try again.</div>`;
+      }
+      setState('');
       toast('error', e?.message || 'Failed to load notes');
     }
   }

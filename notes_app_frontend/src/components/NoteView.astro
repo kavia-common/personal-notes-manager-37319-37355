@@ -8,16 +8,16 @@
 import type { Note } from '../lib/types';
 ---
 
-<section id="note-view" class="card" style="padding: 16px;">
-  <div id="loading" class="text-muted">Loading note…</div>
-  <div id="error" class="text-muted" style="display:none;"></div>
+<section id="note-view" class="card" style="padding: 16px;" aria-labelledby="nv-title">
+  <div id="loading" class="text-muted" role="status" aria-live="polite">Loading note…</div>
+  <div id="error" class="text-muted" role="alert" style="display:none;"></div>
   <div id="content" style="display:none;">
     <header style="display:flex; align-items:center; gap: 10px; justify-content: space-between; flex-wrap: wrap;">
       <h1 id="title" style="margin:0; flex:1;">Note</h1>
       <div style="display:flex; gap:8px; align-items:center;">
-        <button id="fav" class="btn" aria-pressed="false" title="Favorite">☆</button>
-        <a id="edit-link" class="btn" style="border-color: var(--color-border);" href="#">Edit</a>
-        <button id="delete" class="btn">Delete</button>
+        <button id="fav" class="btn" aria-pressed="false" title="Favorite" aria-label="Toggle favorite">☆</button>
+        <a id="edit-link" class="btn" style="border-color: var(--color-border);" href="#" aria-label="Edit this note">Edit</a>
+        <button id="delete" class="btn" aria-label="Delete this note">Delete</button>
       </div>
     </header>
     <p id="meta" class="text-muted" style="margin:6px 0 16px; font-size: 14px;"></p>
@@ -55,6 +55,9 @@ import type { Note } from '../lib/types';
       render(note);
       elLoading.style.display = 'none';
       elContent.style.display = 'block';
+      // focus the title for screen readers
+      elTitle?.setAttribute('tabindex', '-1');
+      elTitle?.focus({ preventScroll: false });
     } catch (e) {
       elLoading.style.display = 'none';
       elError.style.display = 'block';
@@ -113,5 +116,17 @@ import type { Note } from '../lib/types';
   #fav.favorite {
     border-color: color-mix(in oklab, var(--color-secondary), transparent 60%);
     color: var(--color-secondary-600);
+  }
+  #loading::after {
+    content: '';
+    display: block;
+    height: 8px;
+    margin-top: 8px;
+    background: linear-gradient(90deg, transparent, color-mix(in oklab, #ccc, transparent 60%), transparent);
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+    0% { transform: translateX(-100%); }
   }
 </style>

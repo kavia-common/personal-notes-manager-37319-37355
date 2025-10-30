@@ -22,9 +22,9 @@ const view = (searchParams.get('view') ?? 'list') as 'list' | 'grid';
         <p class="text-muted" style="margin:4px 0 0;">Viewing: {filter === 'favorites' ? 'Favorites' : 'All Notes'}</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=list">List</a>
-        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=grid">Grid</a>
-        <a class="btn btn-primary" href="/notes/new">New Note</a>
+        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=list" aria-label="List view">List</a>
+        <a class="btn" style="border-color: var(--color-border);" href="/notes?view=grid" aria-label="Grid view">Grid</a>
+        <a class="btn btn-primary" href="/notes/new" aria-label="Create a new note">New Note</a>
       </div>
     </header>
 

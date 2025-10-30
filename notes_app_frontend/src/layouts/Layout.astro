@@ -17,13 +17,14 @@ import ConfirmDialog from '../components/ConfirmDialog.astro';
   <body>
     <ThemeToggle />
     <div class="app-shell">
-      <aside class="sidebar">
+      <aside class="sidebar" aria-label="App sidebar">
         <Sidebar />
       </aside>
-      <main class="main">
+      <main class="main" role="main" tabindex="-1">
         <slot />
       </main>
     </div>
+    <div class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
     <ConfirmDialog />
   </body>
 </html>

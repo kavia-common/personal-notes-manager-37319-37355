@@ -8,19 +8,22 @@
  */
 ---
 
-<section id="editor" class="card" style="padding: 16px;">
-  <div id="loader" class="text-muted" style="display:none;">Loading…</div>
-  <div id="error" class="text-muted" style="display:none;"></div>
+<section id="editor" class="card" style="padding: 16px;" aria-labelledby="editor-heading">
+  <h2 id="editor-heading" class="visually-hidden">Note editor</h2>
+  <div id="loader" class="text-muted" role="status" aria-live="polite" style="display:none;">Loading…</div>
+  <div id="error" class="text-muted" role="alert" style="display:none;"></div>
   <form id="note-form" style="display:flex; flex-direction: column; gap: 12px;">
-    <input id="title" class="input" placeholder="Note title" required />
+    <label for="title" class="visually-hidden">Title</label>
+    <input id="title" class="input" placeholder="Note title" required aria-required="true" />
+    <label for="content" class="visually-hidden">Content</label>
     <textarea id="content" class="input" placeholder="Write your note..." rows="10" style="resize: vertical;"></textarea>
     <label style="display:flex; align-items:center; gap:8px; font-size: 14px;">
-      <input id="favorite" type="checkbox" />
+      <input id="favorite" type="checkbox" aria-label="Mark as favorite" />
       Mark as favorite
     </label>
     <div style="display:flex; gap: 10px; flex-wrap:wrap; justify-content: flex-end;">
-      <a class="btn" id="cancel" style="border-color: var(--color-border);" href="/notes">Cancel</a>
-      <button type="submit" class="btn btn-primary" id="save">Save</button>
+      <a class="btn" id="cancel" style="border-color: var(--color-border);" href="/notes" aria-label="Cancel editing and return to notes list">Cancel</a>
+      <button type="submit" class="btn btn-primary" id="save" aria-label="Save note">Save</button>
     </div>
   </form>
 </section>
@@ -46,7 +49,11 @@
   }
 
   async function loadIfEdit() {
-    if (!isEdit) return;
+    if (!isEdit) {
+      // new note: focus title for quick typing
+      elTitle?.focus();
+      return;
+    }
     elLoader.style.display = 'block';
     elForm.style.display = 'none';
     try {
@@ -56,6 +63,7 @@
       elFav.checked = !!note.favorite;
       elLoader.style.display = 'none';
       elForm.style.display = 'flex';
+      elTitle?.focus();
     } catch (e) {
       elLoader.style.display = 'none';
       elError.style.display = 'block';
@@ -63,6 +71,10 @@
       toast('error', e?.message || 'Failed to load note');
     }
   }
+
+  window.addEventListener('beforeunload', () => {
+    try { NotesStore.cancelInFlight(); } catch {}
+  });
 
   elForm.addEventListener('submit', async (ev) => {
     ev.preventDefault();
